@@ -1,6 +1,6 @@
 # retryrt
 
-A Go package that provides a http.RoundTripper which retries requests.
+A Go package that provides a http.RoundTripper which retries HTTP requests.
 
 ## Usage
 
