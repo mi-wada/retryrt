@@ -9,15 +9,6 @@ type roundTripper struct {
 	maxRetries int
 }
 
-type Option func(*roundTripper)
-
-// WithMaxRetries sets the maximum number of retries for a request.
-func WithMaxRetries(n int) Option {
-	return func(rt *roundTripper) {
-		rt.maxRetries = n
-	}
-}
-
 func New(base http.RoundTripper, opts ...Option) *roundTripper {
 	if base == nil {
 		base = http.DefaultTransport
@@ -31,6 +22,7 @@ func New(base http.RoundTripper, opts ...Option) *roundTripper {
 	return rt
 }
 
+// RoundTrip implements the [http.RoundTripper] interface.
 func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Clone the request to avoid modifying the original request.
 	// https://cs.opensource.google/go/go/+/refs/tags/go1.25.1:src/net/http/client.go;l=128-132
@@ -48,6 +40,15 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 		break
 	}
 	return resp, err
+}
+
+type Option func(*roundTripper)
+
+// WithMaxRetries sets the maximum number of retries for a request.
+func WithMaxRetries(n int) Option {
+	return func(rt *roundTripper) {
+		rt.maxRetries = n
+	}
 }
 
 // TODO: implement. リトライカウントも渡すべき？あとリクエストも渡すべきかな？そしてこのshouldRetryはDefaultShouldRetryとして公開すべきなんだろうな。その上でWithShouldRetryみたいなオプションを提供してカスタマイズできるようにする。
