@@ -77,6 +77,13 @@ func WithBackoff(b Backoff) Option {
 	}
 }
 
+// WithShouldRetry sets the function to determine whether to retry a request.
+func WithShouldRetry(f ShouldRetry) Option {
+	return func(rt *roundTripper) {
+		rt.shouldRetry = f
+	}
+}
+
 type Backoff func(attemptNum int, resp *http.Response) time.Duration
 
 func DefaultBackoff(min, max time.Duration) Backoff {
