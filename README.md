@@ -13,3 +13,7 @@ A Go package that provides a http.RoundTripper which retries HTTP requests.
 ```shell
 go get github.com/mi-wada/retryrt@latest
 ```
+
+## License
+
+MIT
