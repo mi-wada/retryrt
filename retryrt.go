@@ -4,15 +4,17 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	"slices"
 	"time"
 )
 
 var _ http.RoundTripper = (*roundTripper)(nil)
 
 type roundTripper struct {
-	base       http.RoundTripper
-	maxRetries int
-	backoff    Backoff
+	base        http.RoundTripper
+	maxRetries  int
+	backoff     Backoff
+	shouldRetry ShouldRetry
 }
 
 var (
@@ -26,9 +28,10 @@ func New(base http.RoundTripper, opts ...Option) *roundTripper {
 		base = http.DefaultTransport
 	}
 	rt := &roundTripper{
-		base:       base,
-		maxRetries: defaultMaxRetries,
-		backoff:    DefaultBackoff(defaultBackoffMin, defaultBackoffMax),
+		base:        base,
+		maxRetries:  defaultMaxRetries,
+		backoff:     DefaultBackoff(defaultBackoffMin, defaultBackoffMax),
+		shouldRetry: DefaultShouldRetry,
 	}
 	for _, opt := range opts {
 		opt(rt)
@@ -45,7 +48,7 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	var err error
 	for i := 0; i < rt.maxRetries+1; i++ {
 		resp, err = rt.base.RoundTrip(clonedReq)
-		if shouldRetry(resp, err) {
+		if rt.shouldRetry(clonedReq, resp, err) {
 			if resp != nil {
 				resp.Body.Close()
 			}
@@ -57,6 +60,7 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	return resp, err
 }
 
+// Option defines a configuration option for the [roundTripper].
 type Option func(*roundTripper)
 
 // WithMaxRetries sets the maximum number of retries for a request.
@@ -89,10 +93,32 @@ func DefaultBackoff(min, max time.Duration) Backoff {
 	}
 }
 
-// TODO: implement. リトライカウントも渡すべき？あとリクエストも渡すべきかな？そしてこのshouldRetryはDefaultShouldRetryとして公開すべきなんだろうな。その上でWithShouldRetryみたいなオプションを提供してカスタマイズできるようにする。
-func shouldRetry(resp *http.Response, err error) bool {
-	if 200 <= resp.StatusCode && resp.StatusCode < 300 {
+type ShouldRetry func(req *http.Request, resp *http.Response, err error) bool
+
+var (
+	DefaultRetryableStatusCodes = []int{
+		http.StatusTooManyRequests,
+		http.StatusBadGateway,
+		http.StatusServiceUnavailable,
+		http.StatusGatewayTimeout,
+	}
+)
+
+func DefaultShouldRetry(req *http.Request, resp *http.Response, err error) bool {
+	if req.Context().Err() != nil {
 		return false
 	}
-	return true
+	// TODO: エラー種別ごとに細かく制御する。リトライ対象のエラーはDefaultErrorsで定義する。
+	// err.Error()を使った部分一致などで分岐するならばfunc()を渡すのがよさそうだ。
+	if err != nil {
+		return true
+	}
+	if resp == nil {
+		return false
+	}
+	if slices.Contains(DefaultRetryableStatusCodes, resp.StatusCode) {
+		return true
+	}
+	// TODO: resp.Headerなども確認する。となるとrespを対象とするエラーチェック関数を作った方がいい？
+	return false
 }
