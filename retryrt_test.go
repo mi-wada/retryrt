@@ -45,6 +45,7 @@ func TestMaxRetries(t *testing.T) {
 				Transport: retryrt.New(
 					http.DefaultTransport,
 					retryrt.WithMaxRetries(tt.maxRetries),
+					retryrt.WithBackoff(retryrt.DefaultBackoff(0, 0)),
 				),
 			}
 

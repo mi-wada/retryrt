@@ -1,20 +1,34 @@
 package retryrt
 
-import "net/http"
+import (
+	"math"
+	"math/rand"
+	"net/http"
+	"time"
+)
 
 var _ http.RoundTripper = (*roundTripper)(nil)
 
 type roundTripper struct {
 	base       http.RoundTripper
 	maxRetries int
+	backoff    Backoff
 }
+
+var (
+	defaultMaxRetries = 3
+	defaultBackoffMin = 1 * time.Second
+	defaultBackoffMax = 30 * time.Second
+)
 
 func New(base http.RoundTripper, opts ...Option) *roundTripper {
 	if base == nil {
 		base = http.DefaultTransport
 	}
 	rt := &roundTripper{
-		base: base,
+		base:       base,
+		maxRetries: defaultMaxRetries,
+		backoff:    DefaultBackoff(defaultBackoffMin, defaultBackoffMax),
 	}
 	for _, opt := range opts {
 		opt(rt)
@@ -35,6 +49,7 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 			if resp != nil {
 				resp.Body.Close()
 			}
+			time.Sleep(rt.backoff(i, resp))
 			continue
 		}
 		break
@@ -48,6 +63,29 @@ type Option func(*roundTripper)
 func WithMaxRetries(n int) Option {
 	return func(rt *roundTripper) {
 		rt.maxRetries = n
+	}
+}
+
+// WithBackoff sets the backoff strategy for retries.
+func WithBackoff(b Backoff) Option {
+	return func(rt *roundTripper) {
+		rt.backoff = b
+	}
+}
+
+type Backoff func(attemptNum int, resp *http.Response) time.Duration
+
+func DefaultBackoff(min, max time.Duration) Backoff {
+	return func(attemptNum int, resp *http.Response) time.Duration {
+		mult := math.Pow(2, float64(attemptNum))
+		wait := time.Duration(float64(min) * mult)
+		if wait > max || wait < min {
+			wait = max
+		}
+		if wait > 0 {
+			wait = time.Duration(rand.Int63n(int64(wait)))
+		}
+		return wait
 	}
 }
 
