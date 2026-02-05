@@ -8,23 +8,23 @@ import (
 	"github.com/mi-wada/retryrt"
 )
 
-func TestRetryMax(t *testing.T) {
+func TestMaxRetries(t *testing.T) {
 	tests := []struct {
 		name           string
 		failCount      int
-		retryMax       int
+		maxRetries     int
 		expectedStatus int
 	}{
 		{
 			name:           "Success after two failures within retry limit",
 			failCount:      2,
-			retryMax:       2,
+			maxRetries:     2,
 			expectedStatus: http.StatusOK,
 		},
 		{
 			name:           "Failure when retries are exhausted",
 			failCount:      2,
-			retryMax:       1,
+			maxRetries:     1,
 			expectedStatus: http.StatusServiceUnavailable,
 		},
 	}
@@ -44,7 +44,7 @@ func TestRetryMax(t *testing.T) {
 			client := &http.Client{
 				Transport: retryrt.New(
 					http.DefaultTransport,
-					retryrt.WithRetryMax(tt.retryMax),
+					retryrt.WithMaxRetries(tt.maxRetries),
 				),
 			}
 

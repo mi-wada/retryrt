@@ -5,16 +5,16 @@ import "net/http"
 var _ http.RoundTripper = (*roundTripper)(nil)
 
 type roundTripper struct {
-	base     http.RoundTripper
-	retryMax int
+	base       http.RoundTripper
+	maxRetries int
 }
 
 type Option func(*roundTripper)
 
-// WithRetryMax sets the maximum number of retries for a request.
-func WithRetryMax(n int) Option {
+// WithMaxRetries sets the maximum number of retries for a request.
+func WithMaxRetries(n int) Option {
 	return func(rt *roundTripper) {
-		rt.retryMax = n
+		rt.maxRetries = n
 	}
 }
 
@@ -37,7 +37,7 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	clonedReq := req.Clone(req.Context())
 	var resp *http.Response
 	var err error
-	for i := 0; i < rt.retryMax+1; i++ {
+	for i := 0; i < rt.maxRetries+1; i++ {
 		resp, err = rt.base.RoundTrip(clonedReq)
 		if shouldRetry(resp, err) {
 			if resp != nil {
