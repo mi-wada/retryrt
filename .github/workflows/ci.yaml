@@ -22,12 +22,12 @@ jobs:
           - macos-latest
           - windows-latest
         go:
-          - '1.16'
-          - '1.23'
+          - '1.21'
           - '1.24'
+          - '1.25'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go }}
       - run: go test -v ./...
