@@ -17,7 +17,7 @@ func Example() {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, "success")
+		fmt.Fprintln(w, "ok")
 	}))
 	defer srv.Close()
 
