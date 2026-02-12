@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -28,8 +27,7 @@ func main() {
 
 	resp, err := client.Get("https://httpbin.org/get")
 	if err != nil {
-		fmt.Println("request error:", err)
-		return
+		panic(err)
 	}
 	resp.Body.Close()
 }
